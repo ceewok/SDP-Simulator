@@ -1,5 +1,7 @@
 #include "FEHLCD.h"
 #include "FEHUtility.h"
+#include "FEHImages.h"
+#include "FEHRandom.h"
 #include <iostream>
 #define GOLDEN_RATIO 1.618
 #define X_BOUND 319
@@ -39,10 +41,9 @@ void drawMainMenu(){
     creditsButton.Draw();
     backButton.Draw();
 
-    bool inMenu = true;
     int x,y;
 
-    while(inMenu){
+    while(true){
 
         if(LCD.Touch(&x,&y)){
 
@@ -87,7 +88,7 @@ void drawMainMenu(){
 
             }
             if(backButton.Pressed(x,y,0)){
-                inMenu = false;
+                break;
             }
 
         }
@@ -123,14 +124,13 @@ void drawStatisticsPage(){
     LCD.WriteRC("Rounds played - ", 5, 1);
     LCD.WriteRC(roundsPlayed, 5, 17);
 
-    bool inMenu = true;
     int x,y;
 
-    while(inMenu){
+    while(true){
         if(LCD.Touch(&x,&y)){
 
             if(backButton.Pressed(x,y,0)){
-                inMenu = false;
+                break;
             }
 
         }
@@ -160,15 +160,13 @@ void drawInstructionsPage(){
     LCD.WriteRC("win 3 battles wins", 9, 1);
     LCD.WriteRC("the game!", 10, 1);
 
-
-    bool inMenu = true;
     int x,y;
 
-    while(inMenu){
+    while(true){
         if(LCD.Touch(&x,&y)){
 
             if(backButton.Pressed(x,y,0)){
-                inMenu = false;
+                break;
             }
 
         }
@@ -191,16 +189,15 @@ void drawCreditsPage(){
     LCD.SetFontColor(WHITE);
     LCD.WriteRC("Developers:", 5, 6);
     LCD.WriteRC("Alex Stuk", 7, 8);
-    LCD.WriteRC("Nate Grandisher", 9, 8);
+    LCD.WriteRC("Nate Gradisher", 9, 8);
 
-    bool inMenu = true;
     int x,y;
 
-    while(inMenu){
+    while(true){
         if(LCD.Touch(&x,&y)){
 
             if(backButton.Pressed(x,y,0)){
-                inMenu = false;
+                break;
             }
 
         }
@@ -208,26 +205,193 @@ void drawCreditsPage(){
 
 }
 
+void drawGrid(){
+    LCD.SetFontColor(WHITE);
+
+int topGridPosition = 0;
+int bottomGridPosition = Y_BOUND - 53;
+int rightGridPosition = X_BOUND - 69;
+int leftGridPosition = 65;
+
+//Border
+LCD.DrawLine(leftGridPosition,topGridPosition,leftGridPosition,bottomGridPosition);
+LCD.DrawLine(leftGridPosition,topGridPosition,rightGridPosition,topGridPosition);
+LCD.DrawLine(leftGridPosition,bottomGridPosition,rightGridPosition,bottomGridPosition);
+LCD.DrawLine(rightGridPosition,topGridPosition,rightGridPosition,bottomGridPosition);
+
+//Vertical Lines
+int numVertLines = 5;
+int vertStepSize = 31;
+for(int i = 1; i <= numVertLines; i++){
+    LCD.DrawVerticalLine(vertStepSize * i + leftGridPosition, topGridPosition, bottomGridPosition);
+}
+
+//Horizontal Lines
+int numHoriLines = 6;
+int horiStepSize = 31;
+for(int i = 1; i <= numHoriLines; i++){
+    LCD.DrawHorizontalLine(horiStepSize * i, leftGridPosition, rightGridPosition);
+}
+
+}
+
+void drawPlayer2Fog(){
+    int bottomGridPosition = Y_BOUND - 53;
+    int rightGridPosition = X_BOUND - 69;
+    int leftGridPosition = 65;
+    int halfwayGridPositionY = 3 * 31;
+    float numLines = 50;
+    float xStep = (rightGridPosition - leftGridPosition) / numLines;
+    float yStep = (bottomGridPosition - halfwayGridPositionY) / numLines;
+    for(int i = 1; i <= numLines; i++){
+
+        int randomColor = Random.RandInt();
+        if(randomColor < 10000){
+            LCD.SetFontColor(LCD.ScaleColor(GRAY, 0.7f));
+        }else if(randomColor < 20000){
+            LCD.SetFontColor(LCD.ScaleColor(GRAY, 1.2f));
+        }else{
+            LCD.SetFontColor(GRAY);
+        }
+
+        //Left & top
+        LCD.DrawLine(leftGridPosition, halfwayGridPositionY + (yStep * i), leftGridPosition + (xStep * i), halfwayGridPositionY);
+        //Bottom & right
+        LCD.DrawLine(leftGridPosition + (xStep * i), bottomGridPosition, rightGridPosition, halfwayGridPositionY + (yStep * i));
+
+        //left & bottom
+        LCD.DrawLine(leftGridPosition, bottomGridPosition - (yStep * i), leftGridPosition + (xStep * i), bottomGridPosition);
+        //Right & top
+        LCD.DrawLine(rightGridPosition - (xStep * i), halfwayGridPositionY, rightGridPosition, halfwayGridPositionY + (yStep * i));
+    }
+
+}
+
+int xToCol(int x){
+    int leftGridPosition = 65;
+    return ((x - leftGridPosition) / 31) + 1;
+}
+
+int yToRow(int y){
+    return (y / 31) + 1;
+}
+
+int rowToY(int row){
+    return (row - 1) * 31;
+}
+
+int colToX(int col){
+    int leftGridPosition = 65;
+    return ((col - 1) * 31) + leftGridPosition;
+}
+
+class Soldier
+{
+private:
+    int health = 3;
+    int xPos;
+    int yPos;
+public:
+    Soldier(int x, int y, int board[][6]);
+    ~Soldier();
+};
+
+Soldier::Soldier(int x, int y, int board[][6]){
+
+}
+
+
+Soldier::~Soldier()
+{
+}
+
+
 void playGame(){
     LCD.Clear();
 
-    Icon backButton;
-    backButton.SetProperties("Back", 20, 5, 50, 20, WHITE, SCARLET);
+    LCD.SetFontColor(SCARLET);
+    LCD.WriteRC("PLAYER 1 TURN", 7, 8);
+    Sleep(1.0);
+    LCD.Clear();
 
+    Icon backButton;
+    backButton.SetProperties("X", 0, 0, 15, 20, WHITE, SCARLET);
     backButton.Draw();
 
-    LCD.WriteRC("Play game", 7, 8);
+    int topGridPosition = 0;
+    int bottomGridPosition = Y_BOUND - 53;
+    int rightGridPosition = X_BOUND - 69;
+    int leftGridPosition = 65;
 
-    bool inMenu = true;
+    drawGrid();
+    drawPlayer2Fog();
+
+    //Troop Buttons
+    Icon soldierButton;
+    soldierButton.SetProperties("", 20, 30, 32, 32, WHITE, WHITE);
+    soldierButton.Draw();
+    FEHImage soliderImage("sprites/soldier.png");
+    soliderImage.Draw(20, 30);
+
+    Icon archerButton;
+    archerButton.SetProperties("", 20, 70, 32, 32, WHITE, WHITE);
+    archerButton.Draw();
+    FEHImage archerImage("sprites/archer.png");
+    archerImage.Draw(20, 70);
+
+    Icon mageButton;
+    mageButton.SetProperties("", 20, 110, 32, 32, WHITE, WHITE);
+    mageButton.Draw();
+    FEHImage mageImage("sprites/mage.png");
+    mageImage.Draw(20, 110);
+
+    Icon knightButton;
+    knightButton.SetProperties("", 20, 150, 32, 32, WHITE, WHITE);
+    knightButton.Draw();
+    FEHImage knightImage("sprites/knight.png");
+    knightImage.Draw(20, 150);
+
+    Icon hoverIcon;
+
     int x,y;
+    bool troopSelected = false;
 
-    while(inMenu){
+    int board[6][6] = {};
+
+    while(true){
+
         if(LCD.Touch(&x,&y)){
-
             if(backButton.Pressed(x,y,0)){
-                inMenu = false;
+                break;
             }
+            if(!troopSelected){
+                if(soldierButton.Pressed(x,y,0)){
+                    troopSelected = true;
+                }
+            }else if((x >= leftGridPosition && x <= rightGridPosition) && (y >= topGridPosition && y <= bottomGridPosition)){
+                int column = xToCol(x);
+                int row = yToRow(y);
+                Sleep(0.5);
+            }
+            
 
+        }else if(!LCD.Touch(&x, &y) && (x >= 0 && x <= 65) && (y >= 0 && y <= Y_BOUND)){
+            if(soldierButton.Pressed(x,y,1) || archerButton.Pressed(x,y,1)){
+                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.Draw();
+                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, WHITE, GOLDENROD);
+                hoverIcon.Draw();
+            }else if(mageButton.Pressed(x,y,1) || knightButton.Pressed(x,y,1)){
+                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.Draw();
+                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, WHITE, GOLDENROD);
+                hoverIcon.Draw();
+            }else{
+                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.Draw();
+                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.Draw();
+            }
         }
     }
 }
