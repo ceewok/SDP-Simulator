@@ -3,6 +3,7 @@
 #include "FEHImages.h"
 #include "FEHRandom.h"
 #include <iostream>
+#include <map>
 #define GOLDEN_RATIO 1.618
 #define X_BOUND 319
 #define Y_BOUND 239
@@ -267,42 +268,106 @@ void drawPlayer2Fog(){
 
 }
 
+void drawPlayer1Fog(){
+    int bottomGridPosition = Y_BOUND - 53;
+    int rightGridPosition = X_BOUND - 69;
+    int leftGridPosition = 65;
+    int halfwayGridPositionY = 3 * 31;
+    float numLines = 50;
+    float xStep = (rightGridPosition - leftGridPosition) / numLines;
+    float yStep = (bottomGridPosition - halfwayGridPositionY) / numLines;
+    for(int i = 1; i <= numLines; i++){
+
+        int randomColor = Random.RandInt();
+        if(randomColor < 10000){
+            LCD.SetFontColor(LCD.ScaleColor(GRAY, 0.7f));
+        }else if(randomColor < 20000){
+            LCD.SetFontColor(LCD.ScaleColor(GRAY, 1.2f));
+        }else{
+            LCD.SetFontColor(GRAY);
+        }
+
+        //Left & top
+        LCD.DrawLine(leftGridPosition, (yStep * i), leftGridPosition + (xStep * i), 0);
+        //Bottom & right
+        LCD.DrawLine(leftGridPosition + (xStep * i), halfwayGridPositionY, rightGridPosition, (yStep * i));
+
+        //left & bottom
+        LCD.DrawLine(leftGridPosition, halfwayGridPositionY - (yStep * i), leftGridPosition + (xStep * i), halfwayGridPositionY);
+        //Right & top
+        LCD.DrawLine(rightGridPosition - (xStep * i), 0, rightGridPosition, (yStep * i));
+    }
+
+}
+
 int xToCol(int x){
     int leftGridPosition = 65;
-    return ((x - leftGridPosition) / 31) + 1;
+    return (x - leftGridPosition) / 31;
 }
 
 int yToRow(int y){
-    return (y / 31) + 1;
+    return y / 31;
 }
 
 int rowToY(int row){
-    return (row - 1) * 31;
+    return row * 31;
 }
 
 int colToX(int col){
     int leftGridPosition = 65;
-    return ((col - 1) * 31) + leftGridPosition;
+    return (col * 31) + leftGridPosition;
 }
 
-class Soldier
+class Troop
 {
 private:
-    int health = 3;
-    int xPos;
-    int yPos;
+    int health;
+    std::string troopType;
+    FEHImage image;
+    int player;
+    int col;
+    int row;
 public:
-    Soldier(int x, int y, int board[][6]);
-    ~Soldier();
+    Troop(std::string troopType, int plr, int c, int r);
+    Troop();
+    ~Troop();
+
+    void drawTroop();
+    int getCol();
+    int getRow();
 };
 
-Soldier::Soldier(int x, int y, int board[][6]){
+Troop::Troop(std::string type, int plr, int c, int r){
+    troopType = type;
+    player = plr;
+    col = c;
+    row = r;
+
+    if(type.compare("SOLDIER") == 0){
+        health = 3;
+        image.Open("sprites/soldier.png");
+    }
 
 }
 
+Troop::Troop(){
+    troopType = "NAN";
+}
 
-Soldier::~Soldier()
+Troop::~Troop()
 {
+}
+
+void Troop::drawTroop(){
+    image.Draw(colToX(col), rowToY(row));
+}
+
+int Troop::getCol(){
+    return col;
+}
+
+int Troop::getRow(){
+    return row;
 }
 
 
@@ -310,13 +375,12 @@ void playGame(){
     LCD.Clear();
 
     LCD.SetFontColor(SCARLET);
-    LCD.WriteRC("PLAYER 1 TURN", 7, 8);
+    LCD.WriteRC("PLAYER 1 TURN", 6, 6);
     Sleep(1.0);
     LCD.Clear();
 
     Icon backButton;
     backButton.SetProperties("X", 0, 0, 15, 20, WHITE, SCARLET);
-    backButton.Draw();
 
     int topGridPosition = 0;
     int bottomGridPosition = Y_BOUND - 53;
@@ -354,42 +418,203 @@ void playGame(){
     Icon hoverIcon;
 
     int x,y;
+    int board[6][6] = {};
+    std::map<std::pair<int, int>, Troop> troops;
+
+    std::vector<Troop> p1Troops;
+    std::vector<Troop> p2Troops;
+
+    std::string selectedTroop;
     bool troopSelected = false;
 
-    int board[6][6] = {};
+    int playerMove = 1;
+    bool battleStarted = false;
+
+    int p1Gold = 3;
+    int p2Gold = 3;
+    Icon goldIcon;
+    char buffer[20];
+    sprintf(buffer, "%d GOLD", p1Gold);
+    goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+    goldIcon.Draw();
 
     while(true){
+
+        if(p1Gold <= 0){
+            p1Gold = 6;
+            playerMove = 2;
+
+
+            LCD.Clear();
+            LCD.SetFontColor(SCARLET);
+            LCD.WriteRC("PLAYER 2 TURN", 6, 7);
+            Sleep(1.0);
+            LCD.Clear();
+
+            soldierButton.Draw();
+            soliderImage.Draw(20, 30);
+            archerButton.Draw();
+            archerImage.Draw(20, 70);
+            mageButton.Draw();
+            mageImage.Draw(20, 110);
+            knightButton.Draw();
+            knightImage.Draw(20, 150);
+            drawGrid();
+            drawPlayer1Fog();
+
+            sprintf(buffer, "%d GOLD", p2Gold);
+            goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+            goldIcon.Draw();
+
+        }else if(p2Gold <= 0){
+            p2Gold = 6;
+            LCD.Clear();
+            LCD.SetFontColor(SCARLET);
+            LCD.WriteRC("WHO GOES FIRST?", 2, 5);
+            Icon p1Button;
+            p1Button.SetProperties("P1", X_BOUND/2 - 65, 60, 60, 30, WHITE, SCARLET);
+            p1Button.Draw();
+            Icon p2Button;
+            p2Button.SetProperties("P2", X_BOUND/2 + 5, 60, 60, 30, WHITE, SCARLET);
+            p2Button.Draw();
+            while(true){
+                if(LCD.Touch(&x, &y)){
+                    if(p1Button.Pressed(x,y,1)){
+                        playerMove = 1;
+                        break;
+                    }
+                    if(p2Button.Pressed(x,y,1)){
+                        playerMove = 2;
+                        break;
+                    }
+                }
+            }
+            LCD.Clear();
+            drawGrid();
+            for(int col = 0; col < 6; col++){
+
+                for(int row = 0; row < 6; row++){
+                    
+                    if(board[col][row] != 0){
+                        troops.at({col, row}).drawTroop();
+                    }
+
+                }
+
+            }
+            battleStarted = true;
+        }
+
+        if(battleStarted){
+
+            if(playerMove == 1){
+
+                for(Troop troop : p1Troops){
+                    int closestEnemy = 100;
+                    Troop target;
+                    for(int col = 0; col < 6; col++){
+
+                        for(int row = 0; row < 6; row++){
+
+                            if(board[col][row] == 2){
+
+                                if((abs(col - troop.getCol()) + abs(row - troop.getRow())) < closestEnemy){
+                                    target = troops.at({col, row});
+                                }
+
+                            }
+
+                        }
+
+                    }
+                }
+
+            }
+
+        }
 
         if(LCD.Touch(&x,&y)){
             if(backButton.Pressed(x,y,0)){
                 break;
             }
             if(!troopSelected){
-                if(soldierButton.Pressed(x,y,0)){
+                if(soldierButton.Pressed(x,y,1)){
+                    soldierButton.SetProperties("", 20, 30, 32, 32, YELLOW, WHITE);
+                    soldierButton.Draw();
+                    selectedTroop = "SOLDIER";
                     troopSelected = true;
+                    LCD.SetFontColor(BLACK);
+                    LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
+                    LCD.SetFontColor(SCARLET);
+                    LCD.WriteAt("Now choose an open space", 20, 190);
                 }
             }else if((x >= leftGridPosition && x <= rightGridPosition) && (y >= topGridPosition && y <= bottomGridPosition)){
-                int column = xToCol(x);
+                int col = xToCol(x);
                 int row = yToRow(y);
-                Sleep(0.5);
+                if(playerMove == 1 && row <= 2 && board[col][row] == 0){
+
+                    Troop newTroop{selectedTroop, playerMove, col, row};
+
+                    board[col][row] = playerMove;
+                    troops.insert({{col, row}, newTroop});
+                    p1Troops.push_back(newTroop);
+
+                    newTroop.drawTroop();
+
+                    if(selectedTroop.compare("SOLDIER") == 0){
+                        soldierButton.SetProperties("", 20, 30, 32, 32, WHITE, WHITE);
+                        soldierButton.Draw();
+                        p1Gold -= 1;
+                        sprintf(buffer, "%d GOLD", p1Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+                    }
+                    selectedTroop = "";
+                    troopSelected = false;
+                    LCD.SetFontColor(BLACK);
+                    LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
+                    goldIcon.Draw();
+                }else if(playerMove == 2 && row >= 3 && board[col][row] == 0){
+                    Troop newTroop{selectedTroop, playerMove, col, row};
+
+                    board[col][row] = playerMove;
+                    troops.insert({{col, row}, newTroop});
+                    p2Troops.push_back(newTroop);
+
+                    newTroop.drawTroop();
+
+                    if(selectedTroop.compare("SOLDIER") == 0){
+                        soldierButton.SetProperties("", 20, 30, 32, 32, WHITE, WHITE);
+                        soldierButton.Draw();
+                        p2Gold -= 1;
+                        sprintf(buffer, "%d GOLD", p2Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+                    }
+                    selectedTroop = "";
+                    troopSelected = false;
+                    LCD.SetFontColor(BLACK);
+                    LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
+                    goldIcon.Draw();
+                }
+
+                Sleep(0.25);
             }
             
 
-        }else if(!LCD.Touch(&x, &y) && (x >= 0 && x <= 65) && (y >= 0 && y <= Y_BOUND)){
+        }else if(!LCD.Touch(&x, &y) && !troopSelected && (x >= 0 && x <= 65) && (y >= 0 && y <= Y_BOUND)){
             if(soldierButton.Pressed(x,y,1) || archerButton.Pressed(x,y,1)){
-                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, BLACK, BLACK);
                 hoverIcon.Draw();
-                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, WHITE, GOLDENROD);
+                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, WHITE, GOLDENROD);
                 hoverIcon.Draw();
             }else if(mageButton.Pressed(x,y,1) || knightButton.Pressed(x,y,1)){
-                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, BLACK, BLACK);
                 hoverIcon.Draw();
-                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, WHITE, GOLDENROD);
+                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, WHITE, GOLDENROD);
                 hoverIcon.Draw();
             }else{
-                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, BLACK, BLACK);
                 hoverIcon.Draw();
-                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, Y_BOUND - 32, 80, 30, BLACK, BLACK);
+                hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, BLACK, BLACK);
                 hoverIcon.Draw();
             }
         }
