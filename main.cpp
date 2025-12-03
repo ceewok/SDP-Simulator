@@ -4,6 +4,8 @@
 #include "FEHRandom.h"
 #include <iostream>
 #include <map>
+#include <vector>
+#include <algorithm>
 #define GOLDEN_RATIO 1.618
 #define X_BOUND 319
 #define Y_BOUND 239
@@ -188,9 +190,11 @@ void drawCreditsPage(){
     title.Draw();
 
     LCD.SetFontColor(WHITE);
-    LCD.WriteRC("Developers:", 5, 6);
-    LCD.WriteRC("Alex Stuk", 7, 8);
-    LCD.WriteRC("Nate Gradisher", 9, 8);
+    LCD.WriteRC("Developers:", 3, 6);
+    LCD.WriteRC("Alex Stuk", 5, 8);
+    LCD.WriteRC("Nate Gradisher", 7, 8);
+    LCD.WriteRC("Art:", 10, 6);
+    LCD.WriteRC("SethBB on itch", 12, 8);
 
     int x,y;
 
@@ -211,7 +215,7 @@ void drawGrid(){
 
 int topGridPosition = 0;
 int bottomGridPosition = Y_BOUND - 53;
-int rightGridPosition = X_BOUND - 69;
+int rightGridPosition = X_BOUND - 68;
 int leftGridPosition = 65;
 
 //Border
@@ -320,7 +324,12 @@ int colToX(int col){
 
 void clearSpace(int col, int row){
     LCD.SetFontColor(BLACK);
-    LCD.FillRectangle(colToX(col) + 1, rowToY(row) + 1, 29, 30);
+    LCD.FillRectangle(colToX(col) + 1, rowToY(row) + 1, 30, 30);
+}
+
+void colorSpace(int col, int row, unsigned int color){
+    LCD.SetFontColor(color);
+    LCD.FillRectangle(colToX(col) + 1, rowToY(row) + 1, 30, 30);
 }
 
 class Troop
@@ -332,6 +341,7 @@ private:
     int player;
     int col;
     int row;
+    int damPerHit;
 public:
     Troop(std::string troopType, int plr, int c, int r);
     Troop();
@@ -343,6 +353,11 @@ public:
     void move(int c, int r);
     std::string type();
     int damage(int dam);
+    int getDamage();
+
+    bool operator==(const Troop &otherTroop) const{
+        return(this->col == otherTroop.col && this->row == otherTroop.row);
+    }
 };
 
 Troop::Troop(std::string type, int plr, int c, int r){
@@ -354,6 +369,7 @@ Troop::Troop(std::string type, int plr, int c, int r){
     if(type.compare("SOLDIER") == 0){
         health = 3;
         image.Open("sprites/soldier.png");
+        damPerHit = 1;
     }
 
 }
@@ -367,6 +383,11 @@ Troop::~Troop()
 }
 
 void Troop::drawTroop(){
+    if(player == 1){
+        colorSpace(col, row, BLUE);
+    }else if(player == 2){
+        colorSpace(col, row, SCARLET);
+    }
     image.Draw(colToX(col), rowToY(row));
 }
 
@@ -390,8 +411,16 @@ void Troop::move(int c, int r){
 }
 
 int Troop::damage(int dam){
-    health -= dam;
+    health = health - dam;
+    colorSpace(col, row, RED);
+    Sleep(0.15);
+    clearSpace(col, row);
+    drawTroop();
     return health;
+}
+
+int Troop::getDamage(){
+    return damPerHit;
 }
 
 
@@ -531,36 +560,52 @@ void playGame(){
 
         while(battleStarted){
 
-            Sleep(1.0);
 
             if(playerMove == 1){
 
                 for(Troop &troop : p1Troops){
 
+                    //find closest enemy
                     int closestEnemy = 100;
-                    Troop target;
                     int troopCol = troop.getCol();
                     int troopRow = troop.getRow();
+                    int targetCol = 0;
+                    int targetRow = 0;
                     for(int col = 0; col < 6; col++){
 
                         for(int row = 0; row < 6; row++){
-
+                            cout << board[col][row] << " ";
                             if(board[col][row] == 2){
 
                                 if((abs(col - troopCol) + abs(row - troopRow)) < closestEnemy){
-                                    target = troops.at({col, row});
+                                    targetCol = col;
+                                    targetRow = row;
+                                    closestEnemy = (abs(col - troopCol) + abs(row - troopRow));
                                 }
 
                             }
 
                         }
+                        cout << "\n";
 
                     }
-                    int targetCol = target.getCol();
-                    int targetRow = target.getRow();
+                    cout << "\n";
+                    Troop &target = troops.at({targetCol, targetRow});
 
-                    if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                    if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
+                        //if within one space, attack target
+                        int targetHealth = target.damage(troop.getDamage());
+                        if(targetHealth <= 0){
+                            board[targetCol][targetRow] = 0;
+                            troops.erase({targetCol, targetRow});
+                            clearSpace(targetCol, targetRow);
 
+                            //Weird function, just removes target from p2Troops vector
+                            p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
+                        }
+
+                    }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                        //move DOWN
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
 
@@ -569,7 +614,7 @@ void playGame(){
 
                         troop.move(troopCol, troopRow + 1);
                     }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
-
+                        //move UP
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
 
@@ -578,6 +623,8 @@ void playGame(){
 
                         troop.move(troopCol, troopRow - 1);
                     }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                        //move RIGHT
+
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
 
@@ -586,6 +633,8 @@ void playGame(){
 
                         troop.move(troopCol + 1, troopRow);
                     }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                        //move LEFT
+
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
 
@@ -602,10 +651,12 @@ void playGame(){
 
                 for(Troop &troop : p2Troops){
 
+                    //find closest enemy
                     int closestEnemy = 100;
-                    Troop target;
                     int troopCol = troop.getCol();
                     int troopRow = troop.getRow();
+                    int targetCol = 0;
+                    int targetRow = 0;
                     for(int col = 0; col < 6; col++){
 
                         for(int row = 0; row < 6; row++){
@@ -613,7 +664,9 @@ void playGame(){
                             if(board[col][row] == 1){
 
                                 if((abs(col - troopCol) + abs(row - troopRow)) < closestEnemy){
-                                    target = troops.at({col, row});
+                                    targetCol = col;
+                                    targetRow = row;
+                                    closestEnemy = (abs(col - troopCol) + abs(row - troopRow));
                                 }
 
                             }
@@ -621,10 +674,23 @@ void playGame(){
                         }
 
                     }
-                    int targetCol = target.getCol();
-                    int targetRow = target.getRow();
+                    Troop &target = troops.at({targetCol, targetRow});
 
-                    if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+
+                    if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
+                        //if within one tile, attack target
+                        int targetHealth = target.damage(troop.getDamage());
+                        if(targetHealth <= 0){
+                            board[targetCol][targetRow] = 0;
+                            troops.erase({targetCol, targetRow});
+                            clearSpace(targetCol, targetRow);
+
+                            //Weird function, just removes target from p2Troops vector
+                            p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                        }
+                        
+                    }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                        //move DOWN
 
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
@@ -634,6 +700,7 @@ void playGame(){
 
                         troop.move(troopCol, troopRow + 1);
                     }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                        //move UP
 
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
@@ -643,6 +710,8 @@ void playGame(){
 
                         troop.move(troopCol, troopRow - 1);
                     }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                        //move RIGHT
+
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
 
@@ -651,6 +720,8 @@ void playGame(){
 
                         troop.move(troopCol + 1, troopRow);
                     }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                        //move LEFT
+
                         board[troopCol][troopRow] = 0;
                         troops.erase({troopCol, troopRow});
 
@@ -665,6 +736,7 @@ void playGame(){
 
                 playerMove = 1;
             }
+            Sleep(60.0);
 
         }
 
