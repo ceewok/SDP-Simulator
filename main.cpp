@@ -318,6 +318,11 @@ int colToX(int col){
     return (col * 31) + leftGridPosition;
 }
 
+void clearSpace(int col, int row){
+    LCD.SetFontColor(BLACK);
+    LCD.FillRectangle(colToX(col) + 1, rowToY(row) + 1, 29, 30);
+}
+
 class Troop
 {
 private:
@@ -335,6 +340,9 @@ public:
     void drawTroop();
     int getCol();
     int getRow();
+    void move(int c, int r);
+    std::string type();
+    int damage(int dam);
 };
 
 Troop::Troop(std::string type, int plr, int c, int r){
@@ -368,6 +376,22 @@ int Troop::getCol(){
 
 int Troop::getRow(){
     return row;
+}
+
+std::string Troop::type(){
+    return troopType;
+}
+
+void Troop::move(int c, int r){
+    clearSpace(col, row);
+    col = c;
+    row = r;
+    drawTroop();
+}
+
+int Troop::damage(int dam){
+    health -= dam;
+    return health;
 }
 
 
@@ -505,20 +529,25 @@ void playGame(){
             battleStarted = true;
         }
 
-        if(battleStarted){
+        while(battleStarted){
+
+            Sleep(1.0);
 
             if(playerMove == 1){
 
-                for(Troop troop : p1Troops){
+                for(Troop &troop : p1Troops){
+
                     int closestEnemy = 100;
                     Troop target;
+                    int troopCol = troop.getCol();
+                    int troopRow = troop.getRow();
                     for(int col = 0; col < 6; col++){
 
                         for(int row = 0; row < 6; row++){
 
                             if(board[col][row] == 2){
 
-                                if((abs(col - troop.getCol()) + abs(row - troop.getRow())) < closestEnemy){
+                                if((abs(col - troopCol) + abs(row - troopRow)) < closestEnemy){
                                     target = troops.at({col, row});
                                 }
 
@@ -527,8 +556,114 @@ void playGame(){
                         }
 
                     }
+                    int targetCol = target.getCol();
+                    int targetRow = target.getRow();
+
+                    if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol][troopRow + 1] = playerMove;
+                        troops.insert({{troopCol, troopRow + 1}, troop});
+
+                        troop.move(troopCol, troopRow + 1);
+                    }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol][troopRow - 1] = playerMove;
+                        troops.insert({{troopCol, troopRow - 1}, troop});
+
+                        troop.move(troopCol, troopRow - 1);
+                    }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol + 1][troopRow] = playerMove;
+                        troops.insert({{troopCol + 1, troopRow}, troop});
+
+                        troop.move(troopCol + 1, troopRow);
+                    }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol - 1][troopRow] = playerMove;
+                        troops.insert({{troopCol - 1, troopRow}, troop});
+
+                        troop.move(troopCol - 1, troopRow);
+                    }
+
+                    Sleep(0.2);
+                }
+                playerMove = 2;
+            }else{
+
+                for(Troop &troop : p2Troops){
+
+                    int closestEnemy = 100;
+                    Troop target;
+                    int troopCol = troop.getCol();
+                    int troopRow = troop.getRow();
+                    for(int col = 0; col < 6; col++){
+
+                        for(int row = 0; row < 6; row++){
+
+                            if(board[col][row] == 1){
+
+                                if((abs(col - troopCol) + abs(row - troopRow)) < closestEnemy){
+                                    target = troops.at({col, row});
+                                }
+
+                            }
+
+                        }
+
+                    }
+                    int targetCol = target.getCol();
+                    int targetRow = target.getRow();
+
+                    if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol][troopRow + 1] = playerMove;
+                        troops.insert({{troopCol, troopRow + 1}, troop});
+
+                        troop.move(troopCol, troopRow + 1);
+                    }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol][troopRow - 1] = playerMove;
+                        troops.insert({{troopCol, troopRow - 1}, troop});
+
+                        troop.move(troopCol, troopRow - 1);
+                    }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol + 1][troopRow] = playerMove;
+                        troops.insert({{troopCol + 1, troopRow}, troop});
+
+                        troop.move(troopCol + 1, troopRow);
+                    }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                        board[troopCol][troopRow] = 0;
+                        troops.erase({troopCol, troopRow});
+
+                        board[troopCol - 1][troopRow] = playerMove;
+                        troops.insert({{troopCol - 1, troopRow}, troop});
+
+                        troop.move(troopCol - 1, troopRow);
+                    }
+
+                    Sleep(0.2);
                 }
 
+                playerMove = 1;
             }
 
         }
