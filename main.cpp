@@ -363,8 +363,10 @@ private:
     int col;
     int row;
     int damPerHit;
+    int id;
+    float maxHealth;
 public:
-    Troop(std::string troopType, int plr, int c, int r);
+    Troop(std::string troopType, int plr, int c, int r, int id);
     Troop();
     ~Troop();
 
@@ -378,32 +380,37 @@ public:
     int isCharged = false;
 
     bool operator==(const Troop &otherTroop) const{
-        return(this->col == otherTroop.col && this->row == otherTroop.row);
+        return(this->id == otherTroop.id);
     }
 };
 
 //Constructor, takes the type of troop, the player who owns it and where it is in space
-Troop::Troop(std::string type, int plr, int c, int r){
+Troop::Troop(std::string type, int plr, int c, int r, int idNum){
     troopType = type;
     player = plr;
     col = c;
     row = r;
+    id = idNum;
 
     //TODO: add other troop types with other behaviors
     if(type.compare("SOLDIER") == 0){
         health = 3;
+        maxHealth = health;
         image.Open("sprites/soldier.png");
         damPerHit = 1;
     }else if(type.compare("ARCHER") == 0){
         health = 2;
+        maxHealth = health;
         image.Open("sprites/archer.png");
         damPerHit = 1;
     }else if(type.compare("MAGE") == 0){
-        health = 1;
+        health = 2;
+        maxHealth = health;
         image.Open("sprites/mage.png");
         damPerHit = 3;
     }else if(type.compare("KNIGHT") == 0){
         health = 5;
+        maxHealth = health;
         image.Open("sprites/knight.png");
         damPerHit = 1;
     }
@@ -431,6 +438,16 @@ void Troop::drawTroop(){
     }else{
         clearSpace(col, row);
     }
+
+    if(health > 0){
+        int healthBarX = colToX(col) + 1;
+        int healthBarBottomY = rowToY(row) + 30;
+        float healthPercentage = (health / maxHealth);
+        int healthBarTopY = healthBarBottomY - (29 * healthPercentage);
+        LCD.SetFontColor(RED);
+        LCD.DrawVerticalLine(healthBarX, healthBarBottomY, healthBarTopY);
+    }
+
     image.Draw(colToX(col), rowToY(row));
 }
 
@@ -480,16 +497,6 @@ void projectile(int fromCol, int fromRow, int toCol, int toRow, unsigned int col
     int toY = rowToY(toRow) + 15; 
     LCD.SetFontColor(color);
     LCD.DrawLine(fromX, fromY, toX, toY);
-}
-
-void projectileCleanup(vector<Troop> p1Troops, vector<Troop> p2Troops){
-    drawGrid();
-    for(Troop &troop : p1Troops){
-        troop.drawTroop();
-    }
-    for(Troop &troop : p2Troops){
-        troop.drawTroop();
-    }
 }
 
 
@@ -559,6 +566,9 @@ void playGame(){
     //selectedTroop contains troopType, used in building phase
     std::string selectedTroop;
     bool troopSelected = false;
+
+    //id used to keep track of each troop, mostly used for comparison during removal from vector
+    int id = 1;
 
     //Data to keep track of whos move it is, if we are in build/battle phase, as well as how many rounds have passed
     int playerMove = 1;
@@ -779,7 +789,7 @@ void playGame(){
                                 clearSpace(targetCol, targetRow);
                                 resetSquare(targetCol, targetRow);
 
-                                p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                                p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
                             }
                             
                         }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
@@ -846,7 +856,7 @@ void playGame(){
                                     clearSpace(targetCol, targetRow);
                                     resetSquare(targetCol, targetRow);
 
-                                    p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                                    p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
                                 }
                             }else{
                                 troop.isCharged = true;
@@ -898,8 +908,6 @@ void playGame(){
 
                         //for loop gives knight TWO moves per turn instead of one, might need balancing as its kinda busted rn
                         for(int i = 0; i < 2; i++){
-                            troopCol = troop.getCol();
-                            troopRow = troop.getRow();
                             if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
                                 //if within one space, attack target
                                 int targetHealth = target.damage(troop.getDamage());
@@ -933,6 +941,8 @@ void playGame(){
                                 board[troopCol][troopRow + 1] = playerMove;
                                 troops.insert({{troopCol, troopRow + 1}, troop});
 
+                                troopRow += 1;
+
                             }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
                                 //move UP
                                 troop.move(troopCol, troopRow - 1);
@@ -942,6 +952,8 @@ void playGame(){
 
                                 board[troopCol][troopRow - 1] = playerMove;
                                 troops.insert({{troopCol, troopRow - 1}, troop});
+
+                                troopRow -= 1;
 
                             }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
                                 //move RIGHT
@@ -953,6 +965,8 @@ void playGame(){
                                 board[troopCol + 1][troopRow] = playerMove;
                                 troops.insert({{troopCol + 1, troopRow}, troop});
 
+                                troopCol -= 1;
+
                             }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
                                 //move LEFT
                                 troop.move(troopCol - 1, troopRow);
@@ -962,6 +976,8 @@ void playGame(){
 
                                 board[troopCol - 1][troopRow] = playerMove;
                                 troops.insert({{troopCol - 1, troopRow}, troop});
+
+                                troopCol -= 1;
 
                             }
                             Sleep(0.07);
@@ -1201,8 +1217,7 @@ void playGame(){
                     }else if(troop.type().compare("KNIGHT") == 0){
 
                         for(int i = 0; i < 2; i++){
-                            troopCol = troop.getCol();
-                            troopRow = troop.getRow();
+
                             if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
                                 //if within one space, attack target
                                 int targetHealth = target.damage(troop.getDamage());
@@ -1217,8 +1232,8 @@ void playGame(){
                                     clearSpace(targetCol, targetRow);
                                     resetSquare(targetCol, targetRow);
 
-                                    //Weird function, just removes target from p2Troops vector
-                                    p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
+                                    //Weird function, just removes target from p1Troops vector
+                                    p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
 
                                     //Since the knight just killed its target, we should stop its turn to avoid errors
                                     break;
@@ -1236,6 +1251,8 @@ void playGame(){
                                 board[troopCol][troopRow + 1] = playerMove;
                                 troops.insert({{troopCol, troopRow + 1}, troop});
 
+                                troopRow += 1;
+
                             }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
                                 //move UP
                                 troop.move(troopCol, troopRow - 1);
@@ -1245,6 +1262,8 @@ void playGame(){
 
                                 board[troopCol][troopRow - 1] = playerMove;
                                 troops.insert({{troopCol, troopRow - 1}, troop});
+
+                                troopRow -= 1;
 
                             }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
                                 //move RIGHT
@@ -1256,6 +1275,8 @@ void playGame(){
                                 board[troopCol + 1][troopRow] = playerMove;
                                 troops.insert({{troopCol + 1, troopRow}, troop});
 
+                                troopCol += 1;
+
                             }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
                                 //move LEFT
                                 troop.move(troopCol - 1, troopRow);
@@ -1265,6 +1286,8 @@ void playGame(){
 
                                 board[troopCol - 1][troopRow] = playerMove;
                                 troops.insert({{troopCol - 1, troopRow}, troop});
+
+                                troopCol -= 1;
 
                             }
                             Sleep(0.07);
@@ -1482,7 +1505,7 @@ void playGame(){
                 if(playerMove == 1 && row <= 2 && board[col][row] == 0){
 
                     //Create a new troop at that location,
-                    Troop newTroop{selectedTroop, playerMove, col, row};
+                    Troop newTroop{selectedTroop, playerMove, col, row, id++};
 
                     //Set it up in the 2d array, map, and vector
                     board[col][row] = playerMove;
@@ -1552,7 +1575,8 @@ void playGame(){
 
                 //same thing as above but checks if it is player 2's turn and p2 is clicking within their area
                 }else if(playerMove == 2 && row >= 3 && board[col][row] == 0){
-                    Troop newTroop{selectedTroop, playerMove, col, row};
+
+                    Troop newTroop{selectedTroop, playerMove, col, row, id++};
 
                     board[col][row] = playerMove;
                     troops.insert({{col, row}, newTroop});
