@@ -342,6 +342,16 @@ void colorSpace(int col, int row, unsigned int color){
     LCD.FillRectangle(colToX(col) + 1, rowToY(row) + 1, 30, 30);
 }
 
+void colorSquare(int col, int row, unsigned int color){
+    LCD.SetFontColor(color);
+    LCD.DrawRectangle(colToX(col), rowToY(row), 32, 32);
+}
+
+void resetSquare(int col, int row){
+    LCD.SetFontColor(WHITE);
+    LCD.DrawRectangle(colToX(col), rowToY(row), 32, 32);
+}
+
 //Troop class, contains data for each of the troops on the board
 class Troop
 {
@@ -365,6 +375,7 @@ public:
     std::string type();
     int damage(int dam);
     int getDamage();
+    int isCharged = false;
 
     bool operator==(const Troop &otherTroop) const{
         return(this->col == otherTroop.col && this->row == otherTroop.row);
@@ -383,6 +394,18 @@ Troop::Troop(std::string type, int plr, int c, int r){
         health = 3;
         image.Open("sprites/soldier.png");
         damPerHit = 1;
+    }else if(type.compare("ARCHER") == 0){
+        health = 2;
+        image.Open("sprites/archer.png");
+        damPerHit = 1;
+    }else if(type.compare("MAGE") == 0){
+        health = 1;
+        image.Open("sprites/mage.png");
+        damPerHit = 3;
+    }else if(type.compare("KNIGHT") == 0){
+        health = 5;
+        image.Open("sprites/knight.png");
+        damPerHit = 1;
     }
 
 }
@@ -399,9 +422,14 @@ Troop::~Troop()
 //Draws the troops sprite wherever it thinks it is on the board
 void Troop::drawTroop(){
     if(player == 1){
-        colorSpace(col, row, BLUE);
+        colorSquare(col, row, BLUE);
     }else if(player == 2){
-        colorSpace(col, row, SCARLET);
+        colorSquare(col, row, SCARLET);
+    }
+    if(isCharged){
+        colorSpace(col, row, LIGHTBLUE);
+    }else{
+        clearSpace(col, row);
     }
     image.Draw(colToX(col), rowToY(row));
 }
@@ -424,6 +452,7 @@ std::string Troop::type(){
 //Moves the troop, updates graphics & internals but DOES NOT update 2d array or map (very important)
 void Troop::move(int c, int r){
     clearSpace(col, row);
+    resetSquare(col, row);
     col = c;
     row = r;
     drawTroop();
@@ -442,6 +471,25 @@ int Troop::damage(int dam){
 //Returns the troops damage per hit
 int Troop::getDamage(){
     return damPerHit;
+}
+
+void projectile(int fromCol, int fromRow, int toCol, int toRow, unsigned int color){
+    int fromX = colToX(fromCol) + 15;
+    int fromY = rowToY(fromRow) + 15;
+    int toX = colToX(toCol) + 15;
+    int toY = rowToY(toRow) + 15; 
+    LCD.SetFontColor(color);
+    LCD.DrawLine(fromX, fromY, toX, toY);
+}
+
+void projectileCleanup(vector<Troop> p1Troops, vector<Troop> p2Troops){
+    drawGrid();
+    for(Troop &troop : p1Troops){
+        troop.drawTroop();
+    }
+    for(Troop &troop : p2Troops){
+        troop.drawTroop();
+    }
 }
 
 
@@ -645,72 +693,286 @@ void playGame(){
                         }
 
                     }
+
                     //target is now the closest enemy to the current troop
                     Troop &target = troops.at({targetCol, targetRow});
+                    if(troop.type().compare("SOLDIER") == 0){
+                        if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
+                            //if within one space, attack target
+                            int targetHealth = target.damage(troop.getDamage());
 
-                    if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
-                        //if within one space, attack target
-                        int targetHealth = target.damage(troop.getDamage());
+                            //if the targets health is below zero,
+                            if(targetHealth <= 0){
+                                //remove them from the 2d coordinate array
+                                board[targetCol][targetRow] = 0;
+                                //erase them from the map
+                                troops.erase({targetCol, targetRow});
+                                //delete their sprite
+                                clearSpace(targetCol, targetRow);
+                                resetSquare(targetCol, targetRow);
 
-                        //if the targets health is below zero,
-                        if(targetHealth <= 0){
-                            //remove them from the 2d coordinate array
-                            board[targetCol][targetRow] = 0;
-                            //erase them from the map
-                            troops.erase({targetCol, targetRow});
-                            //delete their sprite
-                            clearSpace(targetCol, targetRow);
+                                //Weird function, just removes target from p2Troops vector
+                                p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
+                            }
+                            //^ this essentially 'kills' the target as there is now no reference to it anymore and will not make any action as it is not in the p2Troops vector
 
-                            //Weird function, just removes target from p2Troops vector
-                            p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
+                            //If the target is not close enough to attack,
+                        }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                            //move DOWN
+                            troop.move(troopCol, troopRow + 1);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow + 1] = playerMove;
+                            troops.insert({{troopCol, troopRow + 1}, troop});
+
+                        }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                            //move UP
+                            troop.move(troopCol, troopRow - 1);
+                            
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow - 1] = playerMove;
+                            troops.insert({{troopCol, troopRow - 1}, troop});
+
+                        }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                            //move RIGHT
+                            troop.move(troopCol + 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol + 1][troopRow] = playerMove;
+                            troops.insert({{troopCol + 1, troopRow}, troop});
+
+                        }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                            //move LEFT
+                            troop.move(troopCol - 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol - 1][troopRow] = playerMove;
+                            troops.insert({{troopCol - 1, troopRow}, troop});
+
                         }
-                        //^ this essentially 'kills' the target as there is now no reference to it anymore and will not make any action as it is not in the p2Troops vector
+                    }else if(troop.type().compare("ARCHER") == 0){
+                        if(abs(troopCol - targetCol) <= 2 && abs(troopRow - targetRow) <= 2){
+                            projectile(troopCol, troopRow, targetCol, targetRow, WHITE);
+                            int targetHealth = target.damage(troop.getDamage());
 
-                        //If the target is not close enough to attack,
-                    }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
-                        //move DOWN
-                        troop.move(troopCol, troopRow + 1);
+                            //projectile cleanup
+                            LCD.Clear();
+                            drawGrid();
+                            for(Troop &troop : p1Troops){
+                                troop.drawTroop();
+                            }
+                            for(Troop &troop : p2Troops){
+                                troop.drawTroop();
+                            }
 
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            if(targetHealth <= 0){
+                                board[targetCol][targetRow] = 0;
+                                troops.erase({targetCol, targetRow});
+                                clearSpace(targetCol, targetRow);
+                                resetSquare(targetCol, targetRow);
 
-                        board[troopCol][troopRow + 1] = playerMove;
-                        troops.insert({{troopCol, troopRow + 1}, troop});
+                                p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                            }
+                            
+                        }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                            //move DOWN
+                            troop.move(troopCol, troopRow + 1);
 
-                    }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
-                        //move UP
-                        troop.move(troopCol, troopRow - 1);
-                        
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
 
-                        board[troopCol][troopRow - 1] = playerMove;
-                        troops.insert({{troopCol, troopRow - 1}, troop});
+                            board[troopCol][troopRow + 1] = playerMove;
+                            troops.insert({{troopCol, troopRow + 1}, troop});
 
-                    }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
-                        //move RIGHT
-                        troop.move(troopCol + 1, troopRow);
+                        }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                            //move UP
+                            troop.move(troopCol, troopRow - 1);
 
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
 
-                        board[troopCol + 1][troopRow] = playerMove;
-                        troops.insert({{troopCol + 1, troopRow}, troop});
+                            board[troopCol][troopRow - 1] = playerMove;
+                            troops.insert({{troopCol, troopRow - 1}, troop});
 
-                    }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
-                        //move LEFT
-                        troop.move(troopCol - 1, troopRow);
+                        }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                            //move RIGHT
+                            troop.move(troopCol + 1, troopRow);
 
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
 
-                        board[troopCol - 1][troopRow] = playerMove;
-                        troops.insert({{troopCol - 1, troopRow}, troop});
+                            board[troopCol + 1][troopRow] = playerMove;
+                            troops.insert({{troopCol + 1, troopRow}, troop});
 
+                        }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                            //move LEFT
+                            troop.move(troopCol - 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol - 1][troopRow] = playerMove;
+                            troops.insert({{troopCol - 1, troopRow}, troop});
+
+                        }
+                    }else if(troop.type().compare("MAGE") == 0){
+                        if(abs(troopCol - targetCol) <= 2 && abs(troopRow - targetRow) <= 2){
+                            if(troop.isCharged){
+                                projectile(troopCol, troopRow, targetCol, targetRow, LIGHTBLUE);
+                                int targetHealth = target.damage(troop.getDamage());
+                                troop.isCharged = false;
+
+                                //projectile cleanup
+                                LCD.Clear();
+                                drawGrid();
+                                for(Troop &troop : p1Troops){
+                                    troop.drawTroop();
+                                }
+                                for(Troop &troop : p2Troops){
+                                    troop.drawTroop();
+                                }
+
+                                if(targetHealth <= 0){
+                                    board[targetCol][targetRow] = 0;
+                                    troops.erase({targetCol, targetRow});
+                                    clearSpace(targetCol, targetRow);
+                                    resetSquare(targetCol, targetRow);
+
+                                    p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                                }
+                            }else{
+                                troop.isCharged = true;
+                                troop.drawTroop();
+                            }
+                            
+                        }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                            //move DOWN
+                            troop.move(troopCol, troopRow + 1);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow + 1] = playerMove;
+                            troops.insert({{troopCol, troopRow + 1}, troop});
+
+                        }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                            //move UP
+                            troop.move(troopCol, troopRow - 1);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow - 1] = playerMove;
+                            troops.insert({{troopCol, troopRow - 1}, troop});
+
+                        }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                            //move RIGHT
+                            troop.move(troopCol + 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol + 1][troopRow] = playerMove;
+                            troops.insert({{troopCol + 1, troopRow}, troop});
+
+                        }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                            //move LEFT
+                            troop.move(troopCol - 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol - 1][troopRow] = playerMove;
+                            troops.insert({{troopCol - 1, troopRow}, troop});
+
+                        }
+                    }else if(troop.type().compare("KNIGHT") == 0){
+
+                        for(int i = 0; i < 2; i++){
+                            troopCol = troop.getCol();
+                            troopRow = troop.getRow();
+                            if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
+                                //if within one space, attack target
+                                int targetHealth = target.damage(troop.getDamage());
+
+                                //if the targets health is below zero,
+                                if(targetHealth <= 0){
+                                    //remove them from the 2d coordinate array
+                                    board[targetCol][targetRow] = 0;
+                                    //erase them from the map
+                                    troops.erase({targetCol, targetRow});
+                                    //delete their sprite
+                                    clearSpace(targetCol, targetRow);
+                                    resetSquare(targetCol, targetRow);
+
+                                    //Weird function, just removes target from p2Troops vector
+                                    p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
+
+                                    //Since the knight just killed its target, we should stop its turn to avoid errors
+                                    break;
+                                }
+                                //^ this essentially 'kills' the target as there is now no reference to it anymore and will not make any action as it is not in the p2Troops vector
+
+                                //If the target is not close enough to attack,
+                            }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                                //move DOWN
+                                troop.move(troopCol, troopRow + 1);
+
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol][troopRow + 1] = playerMove;
+                                troops.insert({{troopCol, troopRow + 1}, troop});
+
+                            }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                                //move UP
+                                troop.move(troopCol, troopRow - 1);
+                                
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol][troopRow - 1] = playerMove;
+                                troops.insert({{troopCol, troopRow - 1}, troop});
+
+                            }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                                //move RIGHT
+                                troop.move(troopCol + 1, troopRow);
+
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol + 1][troopRow] = playerMove;
+                                troops.insert({{troopCol + 1, troopRow}, troop});
+
+                            }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                                //move LEFT
+                                troop.move(troopCol - 1, troopRow);
+
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol - 1][troopRow] = playerMove;
+                                troops.insert({{troopCol - 1, troopRow}, troop});
+
+                            }
+                            Sleep(0.07);
+                        }
+                        //If this troop killed the final enemy, break to the end to avoid errors
+                        if(p2Troops.size() == 0){
+                            break;
+                        }
                     }
 
                     //small sleep just to split up each of p1 troops' actions
-                    Sleep(0.2);
+                    Sleep(0.1);
                 }
                 //And then switch the turn to the other player
                 playerMove = 2;
@@ -743,62 +1005,277 @@ void playGame(){
                         }
 
                     }
+
                     Troop &target = troops.at({targetCol, targetRow});
 
+                    if(troop.type().compare("SOLDIER") == 0){
+                        if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
+                            int targetHealth = target.damage(troop.getDamage());
+                            if(targetHealth <= 0){
+                                board[targetCol][targetRow] = 0;
+                                troops.erase({targetCol, targetRow});
+                                clearSpace(targetCol, targetRow);
+                                resetSquare(targetCol, targetRow);
 
-                    if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
-                        int targetHealth = target.damage(troop.getDamage());
-                        if(targetHealth <= 0){
-                            board[targetCol][targetRow] = 0;
-                            troops.erase({targetCol, targetRow});
-                            clearSpace(targetCol, targetRow);
+                                p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                            }
+                            
+                        }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                            //move DOWN
+                            troop.move(troopCol, troopRow + 1);
 
-                            p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow + 1] = playerMove;
+                            troops.insert({{troopCol, troopRow + 1}, troop});
+
+                        }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                            //move UP
+                            troop.move(troopCol, troopRow - 1);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow - 1] = playerMove;
+                            troops.insert({{troopCol, troopRow - 1}, troop});
+
+                        }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                            //move RIGHT
+                            troop.move(troopCol + 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol + 1][troopRow] = playerMove;
+                            troops.insert({{troopCol + 1, troopRow}, troop});
+
+                        }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                            //move LEFT
+                            troop.move(troopCol - 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol - 1][troopRow] = playerMove;
+                            troops.insert({{troopCol - 1, troopRow}, troop});
+
                         }
-                        
-                    }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
-                        //move DOWN
-                        troop.move(troopCol, troopRow + 1);
+                    }else if(troop.type().compare("ARCHER") == 0){
+                        if(abs(troopCol - targetCol) <= 2 && abs(troopRow - targetRow) <= 2){
+                            projectile(troopCol, troopRow, targetCol, targetRow, WHITE);
+                            int targetHealth = target.damage(troop.getDamage());
 
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            //projectile cleanup
+                            LCD.Clear();
+                            drawGrid();
+                            for(Troop &troop : p1Troops){
+                                troop.drawTroop();
+                            }
+                            for(Troop &troop : p2Troops){
+                                troop.drawTroop();
+                            }
 
-                        board[troopCol][troopRow + 1] = playerMove;
-                        troops.insert({{troopCol, troopRow + 1}, troop});
+                            if(targetHealth <= 0){
+                                board[targetCol][targetRow] = 0;
+                                troops.erase({targetCol, targetRow});
+                                clearSpace(targetCol, targetRow);
+                                resetSquare(targetCol, targetRow);
 
-                    }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
-                        //move UP
-                        troop.move(troopCol, troopRow - 1);
+                                p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                            }
+                            
+                        }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                            //move DOWN
+                            troop.move(troopCol, troopRow + 1);
 
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
 
-                        board[troopCol][troopRow - 1] = playerMove;
-                        troops.insert({{troopCol, troopRow - 1}, troop});
+                            board[troopCol][troopRow + 1] = playerMove;
+                            troops.insert({{troopCol, troopRow + 1}, troop});
 
-                    }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
-                        //move RIGHT
-                        troop.move(troopCol + 1, troopRow);
+                        }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                            //move UP
+                            troop.move(troopCol, troopRow - 1);
 
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
 
-                        board[troopCol + 1][troopRow] = playerMove;
-                        troops.insert({{troopCol + 1, troopRow}, troop});
+                            board[troopCol][troopRow - 1] = playerMove;
+                            troops.insert({{troopCol, troopRow - 1}, troop});
 
-                    }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
-                        //move LEFT
-                        troop.move(troopCol - 1, troopRow);
+                        }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                            //move RIGHT
+                            troop.move(troopCol + 1, troopRow);
 
-                        board[troopCol][troopRow] = 0;
-                        troops.erase({troopCol, troopRow});
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
 
-                        board[troopCol - 1][troopRow] = playerMove;
-                        troops.insert({{troopCol - 1, troopRow}, troop});
+                            board[troopCol + 1][troopRow] = playerMove;
+                            troops.insert({{troopCol + 1, troopRow}, troop});
+
+                        }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                            //move LEFT
+                            troop.move(troopCol - 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol - 1][troopRow] = playerMove;
+                            troops.insert({{troopCol - 1, troopRow}, troop});
+
+                        }
+                    }else if(troop.type().compare("MAGE") == 0){
+                        if(abs(troopCol - targetCol) <= 2 && abs(troopRow - targetRow) <= 2){
+                            if(troop.isCharged){
+                                projectile(troopCol, troopRow, targetCol, targetRow, LIGHTBLUE);
+                                int targetHealth = target.damage(troop.getDamage());
+                                troop.isCharged = false;
+
+                                //projectile cleanup
+                                LCD.Clear();
+                                drawGrid();
+                                for(Troop &troop : p1Troops){
+                                    troop.drawTroop();
+                                }
+                                for(Troop &troop : p2Troops){
+                                    troop.drawTroop();
+                                }
+
+                                if(targetHealth <= 0){
+                                    board[targetCol][targetRow] = 0;
+                                    troops.erase({targetCol, targetRow});
+                                    clearSpace(targetCol, targetRow);
+                                    resetSquare(targetCol, targetRow);
+
+                                    p1Troops.erase(std::remove(p1Troops.begin(), p1Troops.end(), target), p1Troops.end());
+                                }
+                            }else{
+                                troop.isCharged = true;
+                                troop.drawTroop();
+                            }
+                            
+                        }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                            //move DOWN
+                            troop.move(troopCol, troopRow + 1);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow + 1] = playerMove;
+                            troops.insert({{troopCol, troopRow + 1}, troop});
+
+                        }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                            //move UP
+                            troop.move(troopCol, troopRow - 1);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol][troopRow - 1] = playerMove;
+                            troops.insert({{troopCol, troopRow - 1}, troop});
+
+                        }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                            //move RIGHT
+                            troop.move(troopCol + 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol + 1][troopRow] = playerMove;
+                            troops.insert({{troopCol + 1, troopRow}, troop});
+
+                        }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                            //move LEFT
+                            troop.move(troopCol - 1, troopRow);
+
+                            board[troopCol][troopRow] = 0;
+                            troops.erase({troopCol, troopRow});
+
+                            board[troopCol - 1][troopRow] = playerMove;
+                            troops.insert({{troopCol - 1, troopRow}, troop});
+
+                        }
+                    }else if(troop.type().compare("KNIGHT") == 0){
+
+                        for(int i = 0; i < 2; i++){
+                            troopCol = troop.getCol();
+                            troopRow = troop.getRow();
+                            if(abs(troopCol - targetCol) <= 1 && abs(troopRow - targetRow) <= 1){
+                                //if within one space, attack target
+                                int targetHealth = target.damage(troop.getDamage());
+
+                                //if the targets health is below zero,
+                                if(targetHealth <= 0){
+                                    //remove them from the 2d coordinate array
+                                    board[targetCol][targetRow] = 0;
+                                    //erase them from the map
+                                    troops.erase({targetCol, targetRow});
+                                    //delete their sprite
+                                    clearSpace(targetCol, targetRow);
+                                    resetSquare(targetCol, targetRow);
+
+                                    //Weird function, just removes target from p2Troops vector
+                                    p2Troops.erase(std::remove(p2Troops.begin(), p2Troops.end(), target), p2Troops.end());
+
+                                    //Since the knight just killed its target, we should stop its turn to avoid errors
+                                    break;
+                                }
+                                //^ this essentially 'kills' the target as there is now no reference to it anymore and will not make any action as it is not in the p2Troops vector
+
+                                //If the target is not close enough to attack,
+                            }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
+                                //move DOWN
+                                troop.move(troopCol, troopRow + 1);
+
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol][troopRow + 1] = playerMove;
+                                troops.insert({{troopCol, troopRow + 1}, troop});
+
+                            }else if(troopRow > targetRow && board[troopCol][troopRow - 1] == 0){
+                                //move UP
+                                troop.move(troopCol, troopRow - 1);
+                                
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol][troopRow - 1] = playerMove;
+                                troops.insert({{troopCol, troopRow - 1}, troop});
+
+                            }else if(troopCol < targetCol && board[troopCol + 1][troopRow] == 0){
+                                //move RIGHT
+                                troop.move(troopCol + 1, troopRow);
+
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol + 1][troopRow] = playerMove;
+                                troops.insert({{troopCol + 1, troopRow}, troop});
+
+                            }else if(troopCol > targetCol && board[troopCol - 1][troopRow] == 0){
+                                //move LEFT
+                                troop.move(troopCol - 1, troopRow);
+
+                                board[troopCol][troopRow] = 0;
+                                troops.erase({troopCol, troopRow});
+
+                                board[troopCol - 1][troopRow] = playerMove;
+                                troops.insert({{troopCol - 1, troopRow}, troop});
+
+                            }
+                            Sleep(0.07);
+                        }
 
                     }
+                    Sleep(0.1);
 
-                    Sleep(0.2);
+                    //if all enemy troops have been killed, end the turn early to avoid errors
+                    if(p1Troops.size() == 0){
+                        break;
+                    }
 
                 }
 
@@ -813,6 +1290,12 @@ void playGame(){
                 p2Gold = startingGold * round;
                 LCD.Clear();
                 battleStarted = false;
+
+                //Clear the array, map and the vector for p2
+                memset(board, 0, sizeof(board));
+                troops.clear();
+                p2Troops.clear();
+
 
                 //Show which player has won, and ask to play again
                 LCD.SetFontColor(SCARLET);
@@ -858,6 +1341,12 @@ void playGame(){
                 p2Gold = startingGold * round;
                 LCD.Clear();
                 battleStarted = false;
+
+                //Clear the array, map and the vector for p1
+                memset(board, 0, sizeof(board));
+                troops.clear();
+                p1Troops.clear();
+
                 LCD.SetFontColor(SCARLET);
                 LCD.WriteRC("PLAYER 1 WINS", 2, 5);
                 Icon playAgainButton;
@@ -905,20 +1394,81 @@ void playGame(){
 
             //If a troop has not already been selected,
             if(!troopSelected){
+
+                int buildingPlayersGold = 0;
+                if(playerMove == 1){
+                    buildingPlayersGold = p1Gold;
+                }else if(playerMove == 2){
+                    buildingPlayersGold = p2Gold;
+                }
+
                 //And the soldier button was pressed,
-                if(soldierButton.Pressed(x,y,1)){
+                if(buildingPlayersGold >= 1 && soldierButton.Pressed(x,y,1)){
 
                     //Highlight the soldier button to indicate that they have selected the soldier
                     soldierButton.SetProperties("", 20, 30, 32, 32, YELLOW, WHITE);
                     soldierButton.Draw();
+
                     //set selectedTroop to SOLDIER
                     selectedTroop = "SOLDIER";
                     troopSelected = true;
+
                     //And clear the bottom of the screen from the gold indicator, and tell the player to choose where they want to place their troop
                     LCD.SetFontColor(BLACK);
                     LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
                     LCD.SetFontColor(SCARLET);
                     LCD.WriteAt("Now choose an open space", 20, 190);
+
+                //And the archer button was pressed
+                }else if(buildingPlayersGold >= 1 && archerButton.Pressed(x,y,1)){
+
+                    //Highlight the archer button to indicate that they have selected the archer
+                    archerButton.SetProperties("", 20, 70, 32, 32, YELLOW, WHITE);
+                    archerButton.Draw();
+
+                    //set selectedTroop to ARCHER
+                    selectedTroop = "ARCHER";
+                    troopSelected = true;
+
+                    //And clear the bottom of the screen from the gold indicator, and tell the player to choose where they want to place their troop
+                    LCD.SetFontColor(BLACK);
+                    LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
+                    LCD.SetFontColor(SCARLET);
+                    LCD.WriteAt("Now choose an open space", 20, 190);
+
+                //And the mage button was pressed
+                }else if(buildingPlayersGold >= 2 && mageButton.Pressed(x,y,1)){
+
+                    //Highlight the mage button to indicate that they have selected the mage
+                    mageButton.SetProperties("", 20, 110, 32, 32, YELLOW, WHITE);
+                    mageButton.Draw();
+
+                    //set selectedTroop to MAGE
+                    selectedTroop = "MAGE";
+                    troopSelected = true;
+
+                    //And clear the bottom of the screen from the gold indicator, and tell the player to choose where they want to place their troop
+                    LCD.SetFontColor(BLACK);
+                    LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
+                    LCD.SetFontColor(SCARLET);
+                    LCD.WriteAt("Now choose an open space", 20, 190);
+
+                }else if(buildingPlayersGold >= 2 && knightButton.Pressed(x,y,1)){
+
+                    //Highlight the knight button to indicate that they have selected the knight
+                    knightButton.SetProperties("", 20, 150, 32, 32, YELLOW, WHITE);
+                    knightButton.Draw();
+
+                    //set selectedTroop to KNIGHT
+                    selectedTroop = "KNIGHT";
+                    troopSelected = true;
+
+                    //And clear the bottom of the screen from the gold indicator, and tell the player to choose where they want to place their troop
+                    LCD.SetFontColor(BLACK);
+                    LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
+                    LCD.SetFontColor(SCARLET);
+                    LCD.WriteAt("Now choose an open space", 20, 190);
+
                 }
             //If a troop HAS been selected and the click is within the bounds of the grid,
             }else if((x >= leftGridPosition && x <= rightGridPosition) && (y >= topGridPosition && y <= bottomGridPosition)){
@@ -941,14 +1491,51 @@ void playGame(){
                     //Draw it on the board
                     newTroop.drawTroop();
 
-                    //TODO: add other 3 troops here
                     //if the troop placed was a soldier,
                     if(selectedTroop.compare("SOLDIER") == 0){
                         //Unhighlight the soldier button
                         soldierButton.SetProperties("", 20, 30, 32, 32, WHITE, WHITE);
                         soldierButton.Draw();
+
                         //Subtract one gold
                         p1Gold -= 1;
+
+                        //Update gold icon
+                        sprintf(buffer, "%d GOLD", p1Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+
+                    }else if(selectedTroop.compare("ARCHER") == 0){
+                        //Unhighlight the archer button
+                        archerButton.SetProperties("", 20, 70, 32, 32, WHITE, WHITE);
+                        archerButton.Draw();
+
+                        //Subtract one gold
+                        p1Gold -= 1;
+
+                        //Update gold icon
+                        sprintf(buffer, "%d GOLD", p1Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+
+                    }else if(selectedTroop.compare("MAGE") == 0){
+                        //Unhighlight the mage button
+                        mageButton.SetProperties("", 20, 110, 32, 32, WHITE, WHITE);
+                        mageButton.Draw();
+
+                        //Subtract two gold
+                        p1Gold -= 2;
+
+                        //Update gold icon
+                        sprintf(buffer, "%d GOLD", p1Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+
+                    }else if(selectedTroop.compare("KNIGHT") == 0){
+                        //Unhighlight the mage button
+                        knightButton.SetProperties("", 20, 150, 32, 32, WHITE, WHITE);
+                        knightButton.Draw();
+
+                        //Subtract two gold
+                        p1Gold -= 2;
+
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p1Gold);
                         goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
@@ -972,13 +1559,56 @@ void playGame(){
 
                     newTroop.drawTroop();
 
+                    //if the troop placed was a soldier,
                     if(selectedTroop.compare("SOLDIER") == 0){
+                        //Unhighlight the soldier button
                         soldierButton.SetProperties("", 20, 30, 32, 32, WHITE, WHITE);
                         soldierButton.Draw();
+
+                        //Subtract one gold
                         p2Gold -= 1;
+
+                        //Update gold icon
+                        sprintf(buffer, "%d GOLD", p2Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+
+                    }else if(selectedTroop.compare("ARCHER") == 0){
+                        //Unhighlight the archer button
+                        archerButton.SetProperties("", 20, 70, 32, 32, WHITE, WHITE);
+                        archerButton.Draw();
+
+                        //Subtract one gold
+                        p2Gold -= 1;
+
+                        //Update gold icon
+                        sprintf(buffer, "%d GOLD", p2Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+
+                    }else if(selectedTroop.compare("MAGE") == 0){
+                        //Unhighlight the mage button
+                        mageButton.SetProperties("", 20, 110, 32, 32, WHITE, WHITE);
+                        mageButton.Draw();
+
+                        //Subtract two gold
+                        p2Gold -= 2;
+
+                        //Update gold icon
+                        sprintf(buffer, "%d GOLD", p2Gold);
+                        goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+
+                    }else if(selectedTroop.compare("KNIGHT") == 0){
+                        //Unhighlight the mage button
+                        knightButton.SetProperties("", 20, 150, 32, 32, WHITE, WHITE);
+                        knightButton.Draw();
+
+                        //Subtract two gold
+                        p2Gold -= 2;
+
+                        //Update gold icon
                         sprintf(buffer, "%d GOLD", p2Gold);
                         goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
                     }
+
                     selectedTroop = "";
                     troopSelected = false;
                     LCD.SetFontColor(BLACK);
@@ -998,6 +1628,7 @@ void playGame(){
                 //This was for visual artifacts when moving cursor fast
                 hoverIcon.SetProperties("2 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, BLACK, BLACK);
                 hoverIcon.Draw();
+
                 //Show the amount of gold the soldier and archer cost
                 hoverIcon.SetProperties("1 GOLD", X_BOUND/2 - 80/2, 190, 80, 30, WHITE, GOLDENROD);
                 hoverIcon.Draw();
