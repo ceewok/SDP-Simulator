@@ -7,6 +7,7 @@
 #include <vector>
 #include <algorithm>
 #include <list>
+#include <fstream>
 #define GOLDEN_RATIO 1.618
 #define X_BOUND 319
 #define Y_BOUND 239
@@ -113,10 +114,28 @@ void drawStatisticsPage(){
     backButton.Draw();
     title.Draw();
 
-    int p1Wins = 0;
-    int p2Wins = 0;
-    int goldSpent = 0;
-    int roundsPlayed = 0;
+    ifstream file;
+    std::string s;
+
+    file.open("data/p1Wins.txt");
+    getline(file, s);
+    int p1Wins = stoi(s);
+    file.close();
+
+    file.open("data/p2Wins.txt");
+    getline(file, s);
+    int p2Wins = stoi(s);
+    file.close();
+
+    file.open("data/goldSpent.txt");
+    getline(file, s);
+    int goldSpent = stoi(s);
+    file.close();
+
+    file.open("data/roundsPlayed.txt");
+    getline(file, s);
+    int roundsPlayed = stoi(s);
+    file.close();
 
     LCD.SetFontColor(WHITE);
     LCD.WriteRC("Player1 wins - ", 2, 1);
@@ -1322,6 +1341,40 @@ void playGame(){
                 troops.clear();
                 p2Troops.clear();
 
+                //Update stats
+                ifstream infile;
+                ofstream ofile;
+
+                //Open current data and extract it
+                infile.open("data/p2Wins.txt");
+                std::string s;
+                getline(infile, s);
+                int p2Wins = stoi(s);
+
+                //Add one to current value
+                p2Wins += 1;
+                infile.close();
+
+                //Open the file again and overwrite the old data with new data
+                ofile.open("data/p2Wins.txt", std::ios::trunc);
+                ofile << p2Wins;
+                ofile.close();
+
+                //Same thing but for rounds
+
+                //Open current data and extract it
+                infile.open("data/roundsPlayed.txt");
+                getline(infile, s);
+                int roundsPlayed = stoi(s);
+
+                //Add one to current value
+                roundsPlayed += 1;
+                infile.close();
+
+                //Open the file again and overwrite the old data with new data
+                ofile.open("data/roundsPlayed.txt", std::ios::trunc);
+                ofile << roundsPlayed;
+                ofile.close();
 
                 //Show which player has won, and ask to play again
                 LCD.SetFontColor(SCARLET);
@@ -1372,6 +1425,40 @@ void playGame(){
                 memset(board, 0, sizeof(board));
                 troops.clear();
                 p1Troops.clear();
+
+                //Update stats
+                ifstream infile;
+                ofstream ofile;
+                //Open current data and extract it
+                infile.open("data/p1Wins.txt");
+                std::string s;
+                getline(infile, s);
+                int p1Wins = stoi(s);
+
+                //Add one to current value
+                p1Wins += 1;
+                infile.close();
+
+                //Open the file again and overwrite the old data with new data
+                ofile.open("data/p1Wins.txt", std::ios::trunc);
+                ofile << p1Wins;
+                ofile.close();
+
+                //Same thing but for rounds
+
+                //Open current data and extract it
+                infile.open("data/roundsPlayed.txt");
+                getline(infile, s);
+                int roundsPlayed = stoi(s);
+
+                //Add one to current value
+                roundsPlayed += 1;
+                infile.close();
+
+                //Open the file again and overwrite the old data with new data
+                ofile.open("data/roundsPlayed.txt", std::ios::trunc);
+                ofile << roundsPlayed;
+                ofile.close();
 
                 LCD.SetFontColor(SCARLET);
                 LCD.WriteRC("PLAYER 1 WINS", 2, 5);
@@ -1526,6 +1613,25 @@ void playGame(){
                         //Subtract one gold
                         p1Gold -= 1;
 
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add one to current value
+                        goldSpent += 1;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
+                        
+
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p1Gold);
                         goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
@@ -1537,6 +1643,24 @@ void playGame(){
 
                         //Subtract one gold
                         p1Gold -= 1;
+
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add one to current value
+                        goldSpent += 1;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
 
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p1Gold);
@@ -1550,6 +1674,24 @@ void playGame(){
                         //Subtract two gold
                         p1Gold -= 2;
 
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add two to current value
+                        goldSpent += 2;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
+
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p1Gold);
                         goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
@@ -1561,6 +1703,24 @@ void playGame(){
 
                         //Subtract two gold
                         p1Gold -= 2;
+
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add two to current value
+                        goldSpent += 2;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
 
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p1Gold);
@@ -1595,6 +1755,24 @@ void playGame(){
                         //Subtract one gold
                         p2Gold -= 1;
 
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add one to current value
+                        goldSpent += 1;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
+
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p2Gold);
                         goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
@@ -1606,6 +1784,24 @@ void playGame(){
 
                         //Subtract one gold
                         p2Gold -= 1;
+
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add one to current value
+                        goldSpent += 1;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
 
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p2Gold);
@@ -1619,6 +1815,24 @@ void playGame(){
                         //Subtract two gold
                         p2Gold -= 2;
 
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add two to current value
+                        goldSpent += 2;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
+
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p2Gold);
                         goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
@@ -1630,6 +1844,24 @@ void playGame(){
 
                         //Subtract two gold
                         p2Gold -= 2;
+
+                        //Update stats
+                        ifstream infile;
+                        ofstream ofile;
+                        //Open current data and extract it
+                        infile.open("data/goldSpent.txt");
+                        std::string s;
+                        getline(infile, s);
+                        int goldSpent = stoi(s);
+
+                        //Add two to current value
+                        goldSpent += 2;
+                        infile.close();
+
+                        //Open the file again and overwrite the old data with new data
+                        ofile.open("data/goldSpent.txt", std::ios::trunc);
+                        ofile << goldSpent;
+                        ofile.close();
 
                         //Update gold icon
                         sprintf(buffer, "%d GOLD", p2Gold);
