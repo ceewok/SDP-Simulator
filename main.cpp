@@ -896,6 +896,7 @@ void playGame(){
                         }
                     }else if(troop.type().compare("KNIGHT") == 0){
 
+                        //for loop gives knight TWO moves per turn instead of one, might need balancing as its kinda busted rn
                         for(int i = 0; i < 2; i++){
                             troopCol = troop.getCol();
                             troopRow = troop.getRow();
