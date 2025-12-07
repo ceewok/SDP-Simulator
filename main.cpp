@@ -53,13 +53,49 @@ void drawMainMenu(){
         if(LCD.Touch(&x,&y)){
 
             if(playButton.Pressed(x,y,0)){
-                playGame();
                 LCD.Clear();
-                playButton.Draw();
-                instructionsButton.Draw();
-                statButton.Draw();
-                creditsButton.Draw();
-                backButton.Draw();
+                //Creating the buttons to choose singleplayer or multiplayer
+                LCD.SetFontColor(SCARLET);
+                Icon singleplayerButton;
+                singleplayerButton.SetProperties("Singleplayer", X_BOUND/2 - 75, 60, 150, 30, WHITE, SCARLET);
+                singleplayerButton.Draw();
+                Icon multiplayerButton;
+                multiplayerButton.SetProperties("Multiplayer", X_BOUND/2 - 75, 95, 150, 30, WHITE, SCARLET);
+                multiplayerButton.Draw();
+                while(true){
+                    if(LCD.Touch(&x,&y)){
+                        if(singleplayerButton.Pressed(x,y,0)){
+                            LCD.Clear();
+                            Icon levelOneButton;
+                            levelOneButton.SetProperties("Level one", X_BOUND/2 - 75, 60, 150, 30, WHITE, SCARLET);
+                            levelOneButton.Draw();
+                            Icon levelTwoButton;
+                            levelTwoButton.SetProperties("Level two", X_BOUND/2 - 75, 95, 150, 30, WHITE, SCARLET);
+                            levelTwoButton.Draw();
+                            Sleep(0.25);
+                            while(true){
+                                if(LCD.Touch(&x,&y)){
+                                    if(levelOneButton.Pressed(x,y,0)){
+
+                                    }
+                                    if(levelTwoButton.Pressed(x,y,0)){
+
+                                    }
+                                }
+                            }
+                        }
+                        if(multiplayerButton.Pressed(x,y,0)){
+                            playGame();
+                            LCD.Clear();
+                            playButton.Draw();
+                            instructionsButton.Draw();
+                            statButton.Draw();
+                            creditsButton.Draw();
+                            backButton.Draw();
+                            break;
+                        }
+                    }
+                }
 
             }
             if(instructionsButton.Pressed(x,y,0)){
@@ -397,7 +433,6 @@ public:
     std::string type();
     int damage(int dam);
     int getDamage();
-    int isCharged = false;
 
     bool operator==(const Troop &otherTroop) const{
         return(this->id == otherTroop.id);
@@ -419,7 +454,7 @@ Troop::Troop(std::string type, int plr, int c, int r, int idNum){
         image.Open("sprites/soldier.png");
         damPerHit = 1;
     }else if(type.compare("ARCHER") == 0){
-        health = 2;
+        health = 1;
         maxHealth = health;
         image.Open("sprites/archer.png");
         damPerHit = 1;
@@ -427,7 +462,7 @@ Troop::Troop(std::string type, int plr, int c, int r, int idNum){
         health = 2;
         maxHealth = health;
         image.Open("sprites/mage.png");
-        damPerHit = 3;
+        damPerHit = 2;
     }else if(type.compare("KNIGHT") == 0){
         health = 5;
         maxHealth = health;
@@ -453,11 +488,7 @@ void Troop::drawTroop(){
     }else if(player == 2){
         colorSquare(col, row, SCARLET);
     }
-    if(isCharged){
-        colorSpace(col, row, LIGHTBLUE);
-    }else{
-        clearSpace(col, row);
-    }
+    clearSpace(col, row);
 
     if(health > 0){
         int healthBarX = colToX(col) + 1;
@@ -855,32 +886,27 @@ void playGame(){
                         }
                     }else if(troop.type().compare("MAGE") == 0){
                         if(abs(troopCol - targetCol) <= 2 && abs(troopRow - targetRow) <= 2){
-                            if(troop.isCharged){
-                                projectile(troopCol, troopRow, targetCol, targetRow, LIGHTBLUE);
-                                int targetHealth = target->damage(troop.getDamage());
-                                troop.isCharged = false;
 
-                                //projectile cleanup
-                                LCD.Clear();
-                                drawGrid();
-                                for(Troop &troop : p1Troops){
-                                    troop.drawTroop();
-                                }
-                                for(Troop &troop : p2Troops){
-                                    troop.drawTroop();
-                                }
+                            projectile(troopCol, troopRow, targetCol, targetRow, LIGHTBLUE);
+                            int targetHealth = target->damage(troop.getDamage());
 
-                                if(targetHealth <= 0){
-                                    board[targetCol][targetRow] = 0;
-                                    troops.erase({targetCol, targetRow});
-                                    clearSpace(targetCol, targetRow);
-                                    resetSquare(targetCol, targetRow);
-
-                                    p2Troops.remove(*target);
-                                }
-                            }else{
-                                troop.isCharged = true;
+                            //projectile cleanup
+                            LCD.Clear();
+                            drawGrid();
+                            for(Troop &troop : p1Troops){
                                 troop.drawTroop();
+                            }
+                            for(Troop &troop : p2Troops){
+                                troop.drawTroop();
+                            }
+
+                            if(targetHealth <= 0){
+                                board[targetCol][targetRow] = 0;
+                                troops.erase({targetCol, targetRow});
+                                clearSpace(targetCol, targetRow);
+                                resetSquare(targetCol, targetRow);
+
+                                p2Troops.remove(*target);
                             }
                             
                         }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
@@ -1167,32 +1193,27 @@ void playGame(){
                         }
                     }else if(troop.type().compare("MAGE") == 0){
                         if(abs(troopCol - targetCol) <= 2 && abs(troopRow - targetRow) <= 2){
-                            if(troop.isCharged){
-                                projectile(troopCol, troopRow, targetCol, targetRow, LIGHTBLUE);
-                                int targetHealth = target->damage(troop.getDamage());
-                                troop.isCharged = false;
+                            projectile(troopCol, troopRow, targetCol, targetRow, LIGHTBLUE);
 
-                                //projectile cleanup
-                                LCD.Clear();
-                                drawGrid();
-                                for(Troop &troop : p1Troops){
-                                    troop.drawTroop();
-                                }
-                                for(Troop &troop : p2Troops){
-                                    troop.drawTroop();
-                                }
+                            int targetHealth = target->damage(troop.getDamage());
 
-                                if(targetHealth <= 0){
-                                    board[targetCol][targetRow] = 0;
-                                    troops.erase({targetCol, targetRow});
-                                    clearSpace(targetCol, targetRow);
-                                    resetSquare(targetCol, targetRow);
-
-                                    p1Troops.remove(*target);
-                                }
-                            }else{
-                                troop.isCharged = true;
+                            //projectile cleanup
+                            LCD.Clear();
+                            drawGrid();
+                            for(Troop &troop : p1Troops){
                                 troop.drawTroop();
+                            }
+                            for(Troop &troop : p2Troops){
+                                troop.drawTroop();
+                            }
+
+                            if(targetHealth <= 0){
+                                board[targetCol][targetRow] = 0;
+                                troops.erase({targetCol, targetRow});
+                                clearSpace(targetCol, targetRow);
+                                resetSquare(targetCol, targetRow);
+
+                                p1Troops.remove(*target);
                             }
                             
                         }else if(troopRow < targetRow && board[troopCol][troopRow + 1] == 0){
@@ -1911,6 +1932,93 @@ void playGame(){
     }
 }
 
+void playLevelOne(){
+    //Clear the main menu
+    LCD.Clear();
+
+    //Let the player know they are playing level one, as selected
+    LCD.SetFontColor(SCARLET);
+    LCD.WriteRC("LEVEL ONE", 6, 6);
+    Sleep(1.0);
+    LCD.Clear();
+
+    //Old back button, unused currently
+    Icon backButton;
+    backButton.SetProperties("X", 0, 0, 15, 20, WHITE, SCARLET);
+
+    //Grid position
+    int topGridPosition = 0;
+    int bottomGridPosition = Y_BOUND - 53;
+    int rightGridPosition = X_BOUND - 68;
+    int leftGridPosition = 65;
+
+    drawGrid();
+    drawPlayer2Fog();
+
+    //Troop Buttons
+    Icon soldierButton;
+    soldierButton.SetProperties("", 20, 30, 32, 32, WHITE, WHITE);
+    soldierButton.Draw();
+    FEHImage soliderImage("sprites/soldier.png");
+    soliderImage.Draw(20, 30);
+
+    Icon archerButton;
+    archerButton.SetProperties("", 20, 70, 32, 32, WHITE, WHITE);
+    archerButton.Draw();
+    FEHImage archerImage("sprites/archer.png");
+    archerImage.Draw(20, 70);
+
+    Icon mageButton;
+    mageButton.SetProperties("", 20, 110, 32, 32, WHITE, WHITE);
+    mageButton.Draw();
+    FEHImage mageImage("sprites/mage.png");
+    mageImage.Draw(20, 110);
+
+    Icon knightButton;
+    knightButton.SetProperties("", 20, 150, 32, 32, WHITE, WHITE);
+    knightButton.Draw();
+    FEHImage knightImage("sprites/knight.png");
+    knightImage.Draw(20, 150);
+
+    //Hover icon to show troop prices
+    Icon hoverIcon;
+
+    //xy required for .touch() function
+    int x,y;
+
+    //2d array containing where the troops are on the board, primarily used to find the closest target for each troop
+    int board[6][6] = {};
+    //Map that links a col/row coordinate to a troop, used AFTER iterating the 2d array (which gives coordinate of closest troop, but not the troop class itself)
+    std::map<std::pair<int, int>, Troop*> troops;
+
+    //Vectors containing the player's troops, used to iterate through them and perform actions
+    std::list<Troop> p1Troops;
+    std::list<Troop> p2Troops;
+
+    //selectedTroop contains troopType, used in building phase
+    std::string selectedTroop;
+    bool troopSelected = false;
+
+    //id used to keep track of each troop, mostly used for comparison during removal from vector
+    int id = 1;
+
+    //Data to keep track of whos move it is, if we are in build/battle phase, as well as how many rounds have passed
+    int playerMove = 1;
+    bool battleStarted = false;
+    int round = 1;
+
+    //Starting gold values, can be changed any time
+    const int startingGold = 3;
+    int p1Gold = startingGold;
+    int p2Gold = startingGold;
+
+    //Drawing the player's gold icon to display how much gold they have
+    Icon goldIcon;
+    char buffer[20];
+    sprintf(buffer, "%d GOLD", p1Gold);
+    goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
+    goldIcon.Draw();
+}
 
 int main()
 {
