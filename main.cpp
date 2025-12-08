@@ -766,6 +766,11 @@ void playGame(){
 
                     }
 
+                    //Fix for when this loop tries to repeat when there are no enemies left on the board
+                    if(closestEnemy == 100){
+                        break;
+                    }
+
                     //target is now the closest enemy to the current troop
                     Troop *target = troops.at({targetCol, targetRow});
                     if(troop.type().compare("SOLDIER") == 0){
@@ -1077,6 +1082,11 @@ void playGame(){
 
                         }
 
+                    }
+
+                    //Fix for when this loop tries to repeat when there are no enemies left on the board
+                    if(closestEnemy == 100){
+                        break;
                     }
 
                     Troop *target = troops.at({targetCol, targetRow});
@@ -2109,6 +2119,11 @@ void playLevelOne(){
 
                     }
 
+                    //Fix for when this loop tries to repeat when there are no enemies left on the board
+                    if(closestEnemy == 100){
+                        break;
+                    }
+
                     //target is now the closest enemy to the current troop
                     Troop *target = troops.at({targetCol, targetRow});
                     if(troop.type().compare("SOLDIER") == 0){
@@ -2420,6 +2435,11 @@ void playLevelOne(){
 
                         }
 
+                    }
+
+                    //Fix for when this loop tries to repeat when there are no enemies left on the board
+                    if(closestEnemy == 100){
+                        break;
                     }
 
                     Troop *target = troops.at({targetCol, targetRow});
@@ -3112,6 +3132,7 @@ void playLevelTwo(){
 
         //If player one runs out of gold, end their build turn, auto-place the enemy troops and start the battle
         if(p1Gold <= 0){
+            p1Gold = startingGold;
             battleStarted = true;
             for(int col = 0; col <= 5; col++){
 
@@ -3193,6 +3214,11 @@ void playLevelTwo(){
 
                         }
 
+                    }
+
+                    //Fix for when this loop tries to repeat when there are no enemies left on the board
+                    if(closestEnemy == 100){
+                        break;
                     }
 
                     //target is now the closest enemy to the current troop
@@ -3506,6 +3532,11 @@ void playLevelTwo(){
 
                         }
 
+                    }
+
+                    //Fix for when this loop tries to repeat when there are no enemies left on the board
+                    if(closestEnemy == 100){
+                        break;
                     }
 
                     Troop *target = troops.at({targetCol, targetRow});
@@ -4107,7 +4138,6 @@ void playLevelTwo(){
         }
     }
 }
-
 
 int main()
 {
