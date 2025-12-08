@@ -561,6 +561,18 @@ void projectile(int fromCol, int fromRow, int toCol, int toRow, unsigned int col
     LCD.DrawLine(fromX, fromY, toX, toY);
 }
 
+void drawWinCounter(int p1Wins, int p2Wins){
+    Icon p1WinIcon;
+    Icon p2WinIcon;
+    char buffer[20];
+    sprintf(buffer, "%i", p1Wins);
+    p1WinIcon.SetProperties(buffer, 215, 190, 30, 30, WHITE, BLUE);
+    sprintf(buffer, "%i", p2Wins);
+    p2WinIcon.SetProperties(buffer, 250, 190, 30, 30, WHITE, SCARLET);
+    p1WinIcon.Draw();
+    p2WinIcon.Draw();
+
+}
 
 void playGame(){
     //Clear the main menu
@@ -642,12 +654,17 @@ void playGame(){
     int p1Gold = startingGold;
     int p2Gold = startingGold;
 
+    //Win tracking values
+    int p1MatchWins = 0;
+    int p2MatchWins = 0;
+
     //Drawing the player's gold icon to display how much gold they have
     Icon goldIcon;
     char buffer[20];
     sprintf(buffer, "%d GOLD", p1Gold);
     goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
     goldIcon.Draw();
+    drawWinCounter(p1MatchWins, p2MatchWins);
 
     while(true){
 
@@ -676,6 +693,7 @@ void playGame(){
             knightImage.Draw(20, 150);
             drawGrid();
             drawPlayer1Fog();
+            drawWinCounter(p1MatchWins, p2MatchWins);
 
             //Draw player 2's gold icon
             sprintf(buffer, "%d GOLD", p2Gold);
@@ -1375,6 +1393,7 @@ void playGame(){
                 round = round + 1;
                 p1Gold = startingGold * round;
                 p2Gold = startingGold * round;
+                p2MatchWins++;
                 LCD.Clear();
                 battleStarted = false;
 
@@ -1421,8 +1440,15 @@ void playGame(){
                 //Show which player has won, and ask to play again
                 LCD.SetFontColor(SCARLET);
                 LCD.WriteRC("PLAYER 2 WINS", 2, 5);
+                if(p2MatchWins >= 3){
+                    Icon matchWinnerButton;
+                    matchWinnerButton.SetProperties("PLAYER 2 WINS THE MATCH", X_BOUND/2 - 150, 100, 300, 30, WHITE, SCARLET);
+                    matchWinnerButton.Draw();
+                    Sleep(5.0);
+                    return;
+                }
                 Icon playAgainButton;
-                playAgainButton.SetProperties("PLAY AGAIN?", X_BOUND/2 - 50, 100, 100, 30, WHITE, SCARLET);
+                playAgainButton.SetProperties("PLAY AGAIN?", X_BOUND/2 - 75, 100, 150, 30, WHITE, SCARLET);
                 playAgainButton.Draw();
                 while(true){
                     if(LCD.Touch(&x, &y)){
@@ -1450,6 +1476,7 @@ void playGame(){
                 knightImage.Draw(20, 150);
                 drawGrid();
                 drawPlayer2Fog();
+                drawWinCounter(p1MatchWins, p2MatchWins);
 
                 sprintf(buffer, "%d GOLD", p1Gold);
                 goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
@@ -1460,6 +1487,7 @@ void playGame(){
                 round = round + 1;
                 p1Gold = startingGold * round;
                 p2Gold = startingGold * round;
+                p1MatchWins++;
                 LCD.Clear();
                 battleStarted = false;
 
@@ -1502,10 +1530,18 @@ void playGame(){
                 ofile << roundsPlayed;
                 ofile.close();
 
+                if(p1MatchWins >= 3){
+                    Icon matchWinnerButton;
+                    matchWinnerButton.SetProperties("PLAYER 1 WINS THE MATCH", X_BOUND/2 - 150, 100, 300, 30, WHITE, SCARLET);
+                    matchWinnerButton.Draw();
+                    Sleep(5.0);
+                    return;
+                }
+
                 LCD.SetFontColor(SCARLET);
                 LCD.WriteRC("PLAYER 1 WINS", 2, 5);
                 Icon playAgainButton;
-                playAgainButton.SetProperties("PLAY AGAIN?", X_BOUND/2 - 50, 100, 100, 30, WHITE, SCARLET);
+                playAgainButton.SetProperties("PLAY AGAIN?", X_BOUND/2 - 75, 100, 150, 30, WHITE, SCARLET);
                 playAgainButton.Draw();
                 while(true){
                     if(LCD.Touch(&x, &y)){
@@ -1531,6 +1567,7 @@ void playGame(){
                 knightImage.Draw(20, 150);
                 drawGrid();
                 drawPlayer2Fog();
+                drawWinCounter(p1MatchWins, p2MatchWins);
 
                 sprintf(buffer, "%d GOLD", p1Gold);
                 goldIcon.SetProperties(buffer, 20, 190, 80, 30, WHITE, GOLDENROD);
@@ -1776,6 +1813,7 @@ void playGame(){
                     LCD.SetFontColor(BLACK);
                     LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
                     goldIcon.Draw();
+                    drawWinCounter(p1MatchWins, p2MatchWins);
 
                 //same thing as above but checks if it is player 2's turn and p2 is clicking within their area
                 }else if(playerMove == 2 && row >= 3 && board[col][row] == 0){
@@ -1915,6 +1953,7 @@ void playGame(){
                     LCD.SetFontColor(BLACK);
                     LCD.FillRectangle(0, 190, X_BOUND, Y_BOUND - 190);
                     goldIcon.Draw();
+                    drawWinCounter(p1MatchWins, p2MatchWins);
                 }
 
                 //Small cooldown for clicking so this function doesn't fire 10+ times for one click
